@@ -1,0 +1,33 @@
+name: Clima SP — Atualização Horária
+
+on:
+  workflow_dispatch:
+
+  schedule:
+    - cron: '17 * * * *'
+
+concurrency:
+  group: clima-sp-hourly
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: curl, mbstring
+          coverage: none
+
+      - name: Publicar clima horário
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          WEATHER_MODE: hourly
+        run: php clima.php
