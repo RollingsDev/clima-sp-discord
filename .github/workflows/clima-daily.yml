@@ -1,0 +1,59 @@
+name: Clima SP — Previsão Diária
+
+on:
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Forçar nova publicação mesmo se a previsão de hoje já tiver sido enviada'
+        required: false
+        default: false
+        type: boolean
+
+  schedule:
+    - cron: '7 9 * * *'
+    - cron: '27 9 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: clima-sp-daily
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: curl, mbstring
+          coverage: none
+
+      - name: Publicar previsão diária
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          WEATHER_MODE: daily
+          FORCE_DAILY: ${{ github.event_name == 'workflow_dispatch' && inputs.force || false }}
+        run: php clima.php
+
+      - name: Registrar publicação diária
+        if: success()
+        run: |
+          if [ -z "$(git status --porcelain -- .state/last-daily-date.txt)" ]; then
+            echo 'Nenhuma alteração de estado para registrar.'
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .state/last-daily-date.txt
+          git commit -m 'chore: record daily weather publication'
+          git pull --rebase origin main
+          git push
