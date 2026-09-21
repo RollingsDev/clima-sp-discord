@@ -1,6 +1,10 @@
 name: Clima SP — Previsão Diária
 
 on:
+  push:
+    paths:
+      - '.trigger-recovery-2026-09-21'
+
   workflow_dispatch:
     inputs:
       force:
